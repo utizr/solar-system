@@ -1,0 +1,421 @@
+<template>
+    <main>
+        <button id="photon-button">Photon</button>
+        <div id="svgcontainer"></div>
+    </main>
+</template>
+
+
+<script>
+import _ from 'lodash'
+import store from '../vuex/store';
+import { mapGetters } from 'vuex'
+
+export default {
+    data () {
+        return {
+        }
+    },
+    computed: mapGetters({
+        windowSize: 'windowSize',
+    }),
+    mounted: function() {
+        this.createGraph()
+    },
+    watch: {
+        windowSize() {
+            this.handleResize()
+        },
+    },
+    methods: {
+        handleResize() {
+            this.createGraph()
+        },
+        createGraph() {
+            
+            d3.selectAll("#svgcontainer > *").remove();
+            
+            let tooltipMain = d3.select("#d-tooltip-main")
+            let tooltipPoint = d3.select("#d-tooltip-point")
+            
+            let width = this.$el.offsetWidth - 80
+            let height = this.windowSize.height
+
+            let svg = d3.select("#svgcontainer").append("svg")
+                            .attr("width", width)
+                            .attr("height", height)
+
+            d3.select("#photon-button")
+                .on("click",svgClick)
+            
+            let svgDefs = svg.append('defs');
+
+            let planetGradient = svgDefs.append('linearGradient')
+                .attr('id', 'planetGradient');
+
+            planetGradient.append('stop')
+                .attr('class', 'planet-gradient-light')
+                .attr('offset', '0');
+
+            planetGradient.append('stop')
+                .attr('class', 'planet-gradient-dark')
+                .attr('offset', '1');
+                
+            let planetStrokeGradient = svgDefs.append('linearGradient')
+                .attr('id', 'planetStrokeGradient');
+
+            planetStrokeGradient.append('stop')
+                .attr('class', 'planet-gradient-dark')
+                .attr('offset', '0');
+
+            planetStrokeGradient.append('stop')
+                .attr('class', 'planet-gradient-light')
+                .attr('offset', '1');
+            
+            let million = 1000000
+            
+            let radiuses = {
+                sun: 695700,
+                mercury: 2440,
+                venus: 6052,
+                earth: 6371,
+                moon: 1737,
+                mars: 3390,
+                jupiter: 69911,
+                saturn: 58232,
+                uranus: 25362,
+                neptun: 24622,
+            }
+            let distancesFromSun = {
+                mercury: 57 * million,
+                venus: 108.1 * million,
+                earth: 149.6 * million,
+                moon: 149984400,
+                mars: 227.8 * million,
+                jupiter: 778.1 * million,
+                saturn: 1427 * million,
+                uranus: 2870 * million,
+                neptun: 4499 * million,
+            }
+            let marginKm = radiuses.sun * 2
+            
+            let planets = (() => {
+                let sun = {
+                    location: marginKm,
+                    radius: radiuses.sun,
+                    planet: 'Sun'
+                }
+                
+                let sunLocation = sun.location + sun.radius
+                
+                let mercury = {
+                    location: sunLocation + distancesFromSun.mercury + radiuses.mercury,
+                    radius: radiuses.mercury,
+                    planet: 'Mercury'
+                }
+                let venus = {
+                    location: sunLocation + distancesFromSun.venus + radiuses.venus,
+                    radius: radiuses.venus,
+                    planet: 'Venus'
+                }
+                let earth = {
+                    location: sunLocation + distancesFromSun.earth + radiuses.earth,
+                    radius: radiuses.earth,
+                    planet: 'Earth'
+                }
+                let moon = {
+                    location: sunLocation + distancesFromSun.moon + radiuses.moon,
+                    radius: radiuses.moon,
+                    planet: 'Moon'
+                }
+                let mars = {
+                    location: sunLocation + distancesFromSun.mars + radiuses.mars,
+                    radius: radiuses.mars,
+                    planet: 'Mars'
+                }
+                let jupiter = {
+                    location: sunLocation + distancesFromSun.jupiter + radiuses.jupiter,
+                    radius: radiuses.jupiter,
+                    planet: 'Jupiter'
+                }
+                let saturn = {
+                    location: sunLocation + distancesFromSun.saturn + radiuses.saturn,
+                    radius: radiuses.saturn,
+                    planet: 'Saturn'
+                }
+                let uranus = {
+                    location: sunLocation + distancesFromSun.uranus + radiuses.uranus,
+                    radius: radiuses.uranus,
+                    planet: 'Uranus'
+                }
+                let neptun = {
+                    location: sunLocation + distancesFromSun.neptun + radiuses.neptun,
+                    radius: radiuses.neptun,
+                    planet: 'Neptun'
+                }
+                return {sun,mercury,venus,earth,moon,mars,jupiter,saturn,uranus,neptun}
+            })()
+            
+            let planetList = [
+                planets.sun,
+                planets.mercury,
+                planets.venus,
+                planets.earth,
+                planets.moon,
+                planets.mars,
+                planets.jupiter,
+                planets.saturn,
+                planets.uranus,
+                planets.neptun,
+            ]
+            
+            
+            let k = height / width,
+                x0 = [0, (695700*3) + planets.neptun.location],
+                y0 = [0, 1000],
+                x = d3.scaleLinear().domain(x0).range([0, width - 60]),
+                y = d3.scaleLinear().domain(y0).range([0, height]);
+   
+            
+            let xAxis = d3.axisTop(x).ticks(12);
+            
+            let xAxisGrid = d3.axisBottom(x).ticks(12)
+                    .tickSize(-height)
+                    .tickFormat("");
+                    
+            let yAxis = d3.axisRight(y).ticks(3 * height / width);
+
+            let brush = d3.brush().on("end", brushended)
+            let idleTimeout
+            let idleDelay = 350;
+
+            svg.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + (height) + ")")
+                .call(xAxis);
+
+            svg.selectAll(".d-planet-line")
+                .data(planetList)
+                .enter()
+                .append("line")
+                .attr("class", "d-planet-line")
+                .attr("x1", function(d) { return x(d.location); })
+                .attr("y1", function(d,i) {return i*18+18})
+                .attr("x2", function(d) { return x(d.location); })
+                .attr("y2", y(500))
+            
+
+            svg.selectAll(".d-planet")
+                .data(planetList)
+                .enter().append("circle")
+                    .attr("class", function(d) { return `d-planet d-${d.planet}`; })
+                    .attr("cx", function(d) { return x(d.location); })
+                    .attr("cy", function(d) { return y(500); })
+                    .attr("r", function(d){return x(d.radius)})
+                    
+            let photonPosition = radiuses.sun * 3
+
+            let photonStartPosition = radiuses.sun * 3
+
+            svg.append('circle')
+                .attr('class','photon')
+                .attr('cx',x(photonPosition))
+                .attr('cy',y(500))
+                .attr('r',4)
+                
+            svg.select('.photon')
+                .transition(svg.transition().duration(getPhotonTimeTilEnd()).ease(d3.easeLinear))
+                .attr('cx',x(planets.neptun.location))
+                
+            svg.selectAll(".d-planet-text")
+                .data(planetList)
+                .enter()
+                .append("text")
+                .attr("class", "d-planet-text")
+                .attr("x", function(d) { return x(d.location) - 2; })
+                .attr("y", function(d,i){return i*18+18})
+                .text( function(d){return d.planet})
+            
+            svg.append("g")
+                    .attr("class", "brush")
+                    .call(brush);
+
+            svg.selectAll(".domain")
+                    .style("display", "none");
+
+            
+            function brushended() {
+                let s = d3.event.selection;
+                if (!s) {
+                    
+                    if (!idleTimeout) return idleTimeout = setTimeout(idled, idleDelay);
+                    photonPosition = x.invert(svg.select('.photon').attr('cx'))
+                    x.domain(x0);
+                    //y.domain(y0);
+                } else {
+                    photonPosition = x.invert(svg.select('.photon').attr('cx'))
+
+                    photonStartPosition = x.invert(s[0][0])
+
+                    let planetsInRange = findPlanetsInRange(x.invert(s[0][0]),x.invert(s[1][0]))
+                    let firstPlanet = _.first(planetsInRange)
+                    let lastPlanet = _.last(planetsInRange)
+                    let zoomRangeBeginX = x(firstPlanet.location - firstPlanet.radius * 4)
+                    let zoomRangeEndX = x(lastPlanet.location + lastPlanet.radius * 4)
+                    x.domain([s[0][0], s[1][0]].map(x.invert, x)); // exect zoom
+                    //x.domain([zoomRangeBeginX, zoomRangeEndX].map(x.invert, x)); // snap to planets
+                    svg.select(".brush").call(brush.move, null);
+                    
+                }
+                zoom();
+            }
+            
+            // returns the planets that are in the range
+            function findPlanetsInRange(x1, x2) {
+                return _.filter(planetList, (planet) => {
+                    return planet.location > x1 && planet.location < x2
+                })
+            }
+
+            function idled() {
+                idleTimeout = null;
+            }
+            
+            function getPhotonTimeTilEnd() {
+                let speedOfLight = 299792 // km per second
+                let distanceToTravel = planets.neptun.location - photonPosition
+                let timeLef = distanceToTravel / speedOfLight
+                return Math.round(timeLef*1000) // in miliseconds
+            }
+
+            function svgClick() {
+                photonPosition = photonStartPosition
+
+                let t = svg.transition().duration(0);
+                svg.selectAll(".photon").transition(t)
+                    .attr("cx", function(d) { 
+                        return x(photonStartPosition) 
+                    })
+
+                svg.selectAll(".photon")
+                    .transition(svg.transition().duration(getPhotonTimeTilEnd()).ease(d3.easeLinear))
+                    .delay(10)
+                    .attr('cx',x(planets.neptun.location))
+
+            }
+            function zoom() {
+                let t = svg.transition().duration(1300);
+                svg.select(".axis--x").transition(t).call(xAxis);
+                svg.select(".axis--x--grid").transition(t).call(xAxisGrid);
+                
+                svg.selectAll(".d-planet").transition(t)
+                    .attr("cx", function(d) { return x(d.location); })
+                    .attr("r", function(d){return x(x.domain()[0]+d.radius)})
+                    
+                svg.selectAll(".photon").transition(t)
+                    .attr("cx", function(d) { 
+                        return x(photonPosition) 
+                    })
+                    
+                svg.selectAll(".photon")
+                    .transition(svg.transition().duration(getPhotonTimeTilEnd()).ease(d3.easeLinear))
+                    .delay(1300)
+                    .attr('cx',x(planets.neptun.location))
+                    
+                svg.selectAll(".d-planet-line").transition(t)
+                    .attr("x1", function(d) { return x(d.location); })
+                    .attr("x2", function(d) { return x(d.location); })
+               
+                svg.selectAll(".d-planet-text").transition(t)
+                    .attr("x", function(d) { return x(d.location) - 2; })
+            }
+        }
+    }
+}
+</script>
+
+<style>
+main {
+    margin-bottom:1em;
+}
+
+.axis--x--grid path, .axis--x--grid line {
+  opacity: 0.2;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.d-planet {
+    stroke-width:1px;
+    fill:url(#planetGradient);
+    stroke:url(#planetStrokeGradient);
+}
+
+.photon {
+    stroke-width:1px;
+    stroke: #000;
+    fill:yellow;
+}
+.planet-gradient-light {
+    stop-color: #4C4C4C; 
+}
+
+.d-planet-line {
+    stroke-width:1;
+    stroke: #b7b7b7;
+}
+.d-planet-text {
+    fill: #d8d8d8;
+    font-size:16px;
+    font-family: sans-serif;
+}
+
+.planet-gradient-dark {
+    stop-color: #000;  
+}
+
+.axis--x path, .axis--x line {
+  opacity: 0;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+path.line {
+  fill: none;
+  stroke-width: 1px;
+}
+.zoomOut {
+  fill: #66a;
+  cursor: pointer;
+}
+.zoomOutText {
+  pointer-events: none;
+  fill : #ccc;
+}
+.zoomOverlay {
+  pointer-events: all;
+  fill:none;
+}
+.band {
+  fill : none;
+  stroke-width: 1px;
+  stroke: red;
+}
+
+.dot {
+  stroke: #000;
+}
+
+#svg-container {
+  height: 700px;
+  width: 800px;
+}
+
+#photon-button {
+    position: fixed;
+    bottom: 40px;
+    font-size: 1.1em;
+    background: #6b6a6a;
+    color: white;
+}
+
+</style>
