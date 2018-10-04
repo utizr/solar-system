@@ -98,8 +98,8 @@ export default {
                 neptun: 4499 * million,
             }
             let marginKm = radiuses.sun * 2
-            
-            let planets = (() => {
+
+            function createPlanets() {
                 let sun = {
                     location: marginKm,
                     radius: radiuses.sun,
@@ -154,7 +154,9 @@ export default {
                     planet: 'Neptun'
                 }
                 return {sun,mercury,venus,earth,moon,mars,jupiter,saturn,uranus,neptun}
-            })()
+            }
+            
+            let planets = createPlanets()
             
             let planetList = [
                 planets.sun,
