@@ -14,6 +14,8 @@
             <button id="photon-button">Photon</button>
             <button id="stack-button">Stack</button>
             <button id="scale-button">Scale</button>
+            <button id="earth-moon-button">Earth - Moon</button>
+            <button id="earth-mars-button">Earth - Mars</button>
         </div>
         <div id="svgcontainer"></div>
     </main>
@@ -64,6 +66,12 @@
 
         d3.select("#scale-button")
             .on("click", scalePlanets)
+
+        d3.select("#earth-moon-button")
+            .on("click", ()=> {zoomTo('Earth', 'Moon')})
+
+        d3.select("#earth-mars-button")
+            .on("click", ()=> {zoomTo('Earth', 'Mars')})
 
         let svgDefs = svg.append('defs');
 
@@ -340,6 +348,8 @@
                 photonPosition = x.invert(svg.select('.photon').attr('cx'))
                 x.domain(x0);
                 zoomOut()
+                zoom(2300);
+
             } else {
                 photonPosition = x.invert(svg.select('.photon').attr('cx'))
 
@@ -353,9 +363,8 @@
                 x.domain([s[0][0], s[1][0]].map(x.invert, x)); // exect zoom
                 //x.domain([zoomRangeBeginX, zoomRangeEndX].map(x.invert, x)); // snap to planets
                 svg.select(".brush").call(brush.move, null);
-
+                zoom(1300);
             }
-            zoom();
         }
 
         // returns the planets that are in the range
@@ -372,6 +381,20 @@
             let zoomRangeBeginX = x(firstPlanet.location - leftMargin)
             let zoomRangeEndX = x(lastPlanet.location + lastPlanet.radius * 4)
             x.domain([zoomRangeBeginX, zoomRangeEndX].map(x.invert, x)); // snap to planets
+        }
+
+        function zoomTo(...selectedPlanets) {
+            let firstPlanetName = selectedPlanets[0]
+            let lastPlanetName = selectedPlanets[selectedPlanets.length - 1]
+
+            let firstPlanet = planetList.find(planet => planet.planet === firstPlanetName)
+            let lastPlanet = planetList.find(planet => planet.planet === lastPlanetName)
+
+            let zoomRangeBeginX = x(firstPlanet.location - firstPlanet.radius * 2)
+            let zoomRangeEndX = x(lastPlanet.location + lastPlanet.radius * 2)
+            
+            x.domain([zoomRangeBeginX, zoomRangeEndX].map(x.invert, x)); // snap to planets
+            zoom(2200);
         }
 
 
@@ -394,7 +417,7 @@
             zoomOut()
 
             upsertPlanets()
-            zoom()
+            zoom(2200)
         }
 
         function scalePlanets() {
@@ -416,7 +439,7 @@
             zoomOut()
 
             upsertPlanets()
-            zoom()
+            zoom(2200)
         }
 
         function idled() {
@@ -445,8 +468,10 @@
                 .attr('cx', x(planets.neptun.location))
 
         }
-        function zoom() {
-            let t = svg.transition().duration(1300);
+
+        function zoom(duration) {
+            duration = duration || 1300
+            let t = svg.transition().duration(duration);
             svg.select(".axis--x").transition(t).call(xAxis);
             svg.select(".axis--x--grid").transition(t).call(xAxisGrid);
 
