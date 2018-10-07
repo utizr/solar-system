@@ -17,7 +17,6 @@
         </div>
         <div id="svgcontainer"></div>
     </main>
-</body>
 
 <script>
 
@@ -32,15 +31,14 @@
 
     function onResize() {
         debounce(() => {
-            console.log("Resized>>>")
-            createGraph()
+            renderSolarSystem()
         }, 200)
     }
 
     window.addEventListener('resize', onResize)
 
 
-    function createGraph() {
+    function renderSolarSystem() {
 
         let windowSize = {
             height: window.innerHeight,
@@ -480,7 +478,7 @@
     }
 
     // rander solar system:
-    createGraph()
+    renderSolarSystem()
 
 </script>
 
@@ -590,4 +588,5 @@
     }
 </style>
 
+</body>
 </html>
